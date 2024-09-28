@@ -1,0 +1,123 @@
+step 1 
+create ec2 instances
+- one linux ec2 (controller)
+- second linux-node
+- third windows-node (on the security group set a new inbound rule 
+WinRm-HTTPS to allow port 5986 open)
+
+step 2
+ssh into the controller
+
+step 3
+install ansible in the controller
+sudo amazon-linux-extras install-ansible2 -y
+
+step 4 
+check ansible version
+ansible --version
+
+Step 5 
+Install pywinrm module
+sudo yum install pip
+pip install --upgrade --force-reinstall pip==9.0.3 
+pip install pywinrm
+
+Step 6
+Edit the inventory file for Ansible
+cd /etc/ansible
+ls -l
+Edit hosts
+vi hosts
+
+[windows]
+<input server IP> ensure to use the private IP
+
+[windows:vars]
+
+ansible_user=ansadmin
+ansible_password=icui4cusunday1$
+ansible_connection=winrm
+ansible_port=5986
+ansible_winrm_server_cert_validation=ignore
+
+Step 7
+Install WINRM on windows
+- log into the windows instance
+- download the powershell script called ConfigureRemotingForAnsible.ps1 in the C drive on the windows server
+-open cmd as administrator (still on windows server)
+-To install the Windows Remote Management package, Enter the command below
+cd \
+powershell.exe -ExecutionPolicy Bypass -File .\ConfigureRemotingForAnsible.ps1
+
+Step 8
+Based on the configuration file above, set your username to ansadmin and set your ansible_password
+Still on WindowsPress windows_logo + R, then input 
+compmgmt.msc
+click Local User and Groups
+Click Users
+THEN create new user to be ansadmin then ansible_password
+uncheck user must change password at next login
+Then click create
+- Ensure to make the user member of administrator (else, you wont be able to make commands from your ansible controller)
+- Right click on the newly created ansadmin, click on properties, click Member pf Administrator, then click add
+Inside the box below, type administrators, then click check names, then click ok, apply, ok
+
+Step 9
+Ping your windows from controller 
+ansible all -m win_ping
+Further check the connections
+ansible all -m win_command -a "whoami.exe"
+ansible all -m win_command -a "cmd.exe /c mkdir c:\test"
+ansible all -m win_command -a "cmd.exe /c mkdir c:\trevotech-Devops"
+
+How to connect to Linux node
+Step 1: 
+ssh into your node
+
+Step 2 
+go to root
+sudo su -
+
+Step 3 (to modify the congfig file)
+cd /etc/
+ls
+cd ssh/
+ls
+vi sshd_config
+edit passwordauthentication to (yes)
+then set password
+passwd tap Enter then set your password
+
+Step 4 
+Go to the controller node ssh with the private ip, password will be required, input your newly setted password then you should be able to ssh into your node
+
+Step 5
+To have a more secure way to connect to your node from the controller, you must access it via ssh, so you have to generate keypair
+
+ON CONTROLLER
+ssh-keygen (you will receive a prompt, tap Enter all through to make it default) (on the controller)
+Now both public and private key would have been created
+
+ls -a
+cd .ssh/
+ls
+cd .ssh/
+
+NOTE: We have to store the public key generated on the controller on the node
+ssh-copy-id <node-private-ip eg 172.31.25.185>, then enter the password created initially
+
+NOW  go to your node 
+sudo su -
+ls -a
+you will see .ssh file been created
+on the controller cat your public key   cat id_rsa.pub
+on the node cat authorised key          cat authorized_keys   [you will see the ip address of your controller]
+
+NOW 
+Go to node and edit the config file back passwordauthentication to NO
+
+
+cd /etc/ssh/
+ls
+vi sshd_config 
+edit passwordauthentication to (no)
